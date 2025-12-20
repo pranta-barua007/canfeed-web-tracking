@@ -74,6 +74,7 @@ export default function ProxyExperimentPage() {
                         height={800} // Fixed height for test
                         url={iframeSrc || "test"}
                         scale={1}
+                        iframeRef={iframeRef}
                     />
                 </div>
 

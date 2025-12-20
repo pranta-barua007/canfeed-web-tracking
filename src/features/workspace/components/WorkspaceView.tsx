@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Loader2 } from "lucide-react";
 
 const CanvasOverlay = dynamic(() => import("./CanvasOverlay"), {
@@ -18,6 +18,7 @@ interface WorkspaceViewProps {
 
 export function WorkspaceView({ targetUrl, width, height, scale, isCommentMode }: WorkspaceViewProps) {
     const [isLoading, setIsLoading] = useState(true);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     return (
         <div
@@ -42,6 +43,7 @@ export function WorkspaceView({ targetUrl, width, height, scale, isCommentMode }
 
             {/* The Proxy Iframe */}
             <iframe
+                ref={iframeRef}
                 id="proxy-iframe"
                 key={targetUrl} // Force remount on URL change to clear state/listeners
                 src={`/api/proxy?url=${encodeURIComponent(targetUrl)}`}
@@ -67,6 +69,7 @@ export function WorkspaceView({ targetUrl, width, height, scale, isCommentMode }
                     height={height}
                     url={targetUrl}
                     scale={scale}
+                    iframeRef={iframeRef}
                 />
             </div>
         </div>

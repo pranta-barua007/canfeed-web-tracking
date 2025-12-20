@@ -15,9 +15,10 @@ interface CanvasOverlayProps {
     height: number;
     url: string;
     scale?: number;
+    iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }
 
-export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasOverlayProps) {
+export default function CanvasOverlay({ width, height, url, scale = 1, iframeRef }: CanvasOverlayProps) {
     const { isCommentMode, comments, addComment, toggleCommentResolve, activeCommentId, setActiveCommentId } = useAppStore();
     const stageRef = useRef<Konva.Stage>(null);
     const [newMarkerPos, setNewMarkerPos] = useState<{ x: number; y: number; selector?: string; relativeX?: number; relativeY?: number } | null>(null);
@@ -41,7 +42,9 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
 
     // Scroll Sync & Tracking Loop
     useEffect(() => {
-        const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
+        const iframe = iframeRef.current;
+        if (!iframe) return;
+
         let animationFrameId: number;
 
         const handleScroll = () => {
@@ -166,8 +169,8 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
             const logicalX = pos.x / scale;
             const logicalY = pos.y / scale;
 
-            const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
-            if (iframe.contentDocument) {
+            const iframe = iframeRef.current;
+            if (iframe && iframe.contentDocument) {
                 try {
                     const el = iframe.contentDocument.elementFromPoint(logicalX, logicalY);
                     // Filter: Ignore body/html to focus on specific elements. 
@@ -211,6 +214,9 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
             let relativeX: number | undefined;
             let relativeY: number | undefined;
 
+            const iframe = iframeRef.current;
+            if (!iframe) return;
+
             // Use the hovered element if available for consistency
             if (hoveredRect) {
                 selector = hoveredRect.selector;
@@ -219,7 +225,6 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                 // Let's re-get standard data or use what we have.
                 // Safest to re-query to get exact relative offset logic consistent.
 
-                const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
                 if (iframe?.contentDocument) {
                     const el = getElementBySelector(selector, iframe.contentDocument); // Use selector we found
                     if (el) {
@@ -230,7 +235,6 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                 }
             } else {
                 // Fallback to direct probe (if mouse moved fast or something)
-                const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
                 if (iframe.contentDocument) {
                     const el = iframe.contentDocument.elementFromPoint(logicalX, logicalY);
                     if (el && el !== iframe.contentDocument.body && el !== iframe.contentDocument.documentElement) {

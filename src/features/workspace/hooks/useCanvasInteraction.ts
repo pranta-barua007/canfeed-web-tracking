@@ -9,6 +9,7 @@ interface UseCanvasInteractionProps {
     activeComment: CommentType | undefined;
     newMarkerPos: any;
     setNewMarkerPos: (pos: any) => void;
+    iframeRef: React.RefObject<HTMLIFrameElement>;
 }
 
 export function useCanvasInteraction({
@@ -16,7 +17,8 @@ export function useCanvasInteraction({
     scale = 1,
     activeComment,
     newMarkerPos,
-    setNewMarkerPos
+    setNewMarkerPos,
+    iframeRef
 }: UseCanvasInteractionProps) {
     const [hoveredRect, setHoveredRect] = useState<{ x: number; y: number; width: number; height: number; selector: string } | null>(null);
 
@@ -34,8 +36,8 @@ export function useCanvasInteraction({
             const logicalX = pos.x / scale;
             const logicalY = pos.y / scale;
 
-            const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
-            if (iframe.contentDocument) {
+            const iframe = iframeRef.current;
+            if (iframe && iframe.contentDocument) {
                 try {
                     const el = iframe.contentDocument.elementFromPoint(logicalX, logicalY);
                     if (el && el !== iframe.contentDocument.body && el !== iframe.contentDocument.documentElement) {
@@ -76,9 +78,11 @@ export function useCanvasInteraction({
             let relativeX: number | undefined;
             let relativeY: number | undefined;
 
+            const iframe = iframeRef.current;
+            if (!iframe) return;
+
             if (hoveredRect) {
                 selector = hoveredRect.selector;
-                const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
                 if (iframe?.contentDocument) {
                     const el = getElementBySelector(selector, iframe.contentDocument);
                     if (el) {
@@ -88,7 +92,6 @@ export function useCanvasInteraction({
                     }
                 }
             } else {
-                const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
                 if (iframe.contentDocument) {
                     const el = iframe.contentDocument.elementFromPoint(logicalX, logicalY);
                     if (el && el !== iframe.contentDocument.body && el !== iframe.contentDocument.documentElement) {

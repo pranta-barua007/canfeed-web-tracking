@@ -7,9 +7,10 @@ interface UseElementTrackingProps {
     activeCommentId: string | null;
     newMarkerPos: { selector?: string } | null;
     scale?: number;
+    iframeRef: React.RefObject<HTMLIFrameElement>;
 }
 
-export function useElementTracking({ comments, activeCommentId, newMarkerPos, scale = 1 }: UseElementTrackingProps) {
+export function useElementTracking({ comments, activeCommentId, newMarkerPos, scale = 1, iframeRef }: UseElementTrackingProps) {
     const [trackedPositions, setTrackedPositions] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
     const [scrollTop, setScrollTop] = useState(0);
     const [activeHighlightRect, setActiveHighlightRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -21,7 +22,9 @@ export function useElementTracking({ comments, activeCommentId, newMarkerPos, sc
 
     // Scroll Sync & Tracking Loop
     useEffect(() => {
-        const iframe = document.getElementById("proxy-iframe") as HTMLIFrameElement;
+        const iframe = iframeRef.current;
+        if (!iframe) return;
+
         let animationFrameId: number;
 
         const handleScroll = () => {
@@ -136,7 +139,7 @@ export function useElementTracking({ comments, activeCommentId, newMarkerPos, sc
                 iframe.removeEventListener("load", attach);
             }
         };
-    }, [comments, activeComment, newMarkerPos, scale]);
+    }, [comments, activeComment, newMarkerPos, scale, iframeRef]);
 
     return { trackedPositions, activeHighlightRect, scrollTop };
 }
