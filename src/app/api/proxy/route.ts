@@ -198,6 +198,20 @@ export async function GET(req: NextRequest) {
               const PROXY_ENDPOINT = '/api/proxy';
               const TARGET_ORIGIN = '${targetOrigin}';
               
+              // DISABLE SERVICE WORKERS (Avoids pollution and broken caches)
+              if ('serviceWorker' in navigator) {
+                  // Mock basic API to prevent crashes, but disable functionality
+                  Object.defineProperty(navigator, 'serviceWorker', {
+                      value: {
+                          register: async () => { console.warn('[Proxy] ServiceWorker blocked'); return {}; },
+                          ready: new Promise(() => {}),
+                          controller: null,
+                          getRegistration: async () => null,
+                          getRegistrations: async () => []
+                      }
+                  });
+              }
+
               // PATCH HISTORY API (Fixes SecurityError)
               // The app thinks it's on Target Domain, tries to pushState 'https://target.com/foo'
               // Browser says: "No, you are localhost".
@@ -251,6 +265,18 @@ export async function GET(req: NextRequest) {
                  }
                  return originalOpen.call(this, method, url, ...args);
               };
+
+              // INTERCEPT FORMS (Fix for Remix/SSR Forms)
+              document.addEventListener('submit', function(e) {
+                  // We can't easily proxy standard full-page form POSTs yet because we need to
+                  // handle the body and method in our proxy route (currently GET only).
+                  // For now, we prefer to let them try (via base tag) or warn?
+                  // Actually, modern frameworks often use 'submit' events to do fetch() anyway.
+                  // Since we patched fetch(), those work!
+                  // It's only "native" non-JS forms that are the issue.
+                  // Let's leave them be for now, as blocking them breaks more than it fixes.
+                  // The <base> tag will direct them to the target. It might X-Frame-Option fail, but that's better than silent death.
+              }, true);
 
               // INTERCEPT CLICKS (For Navigation Sync)
               document.addEventListener('click', function(e) {
