@@ -3,20 +3,26 @@ import Konva from "konva";
 import { getUniqueSelector, getElementBySelector } from "@/lib/selector";
 import { type CommentType } from "@/store";
 
+interface MarkerPos {
+    x: number;
+    y: number;
+    selector?: string;
+    relativeX?: number;
+    relativeY?: number;
+}
+
 interface UseCanvasInteractionProps {
     isCommentMode: boolean;
     scale?: number;
     activeComment: CommentType | undefined;
-    newMarkerPos: any;
-    setNewMarkerPos: (pos: any) => void;
-    iframeRef: React.RefObject<HTMLIFrameElement>;
+    newMarkerPos: MarkerPos | null;
+    setNewMarkerPos: (pos: MarkerPos | null) => void;
+    iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }
 
 export function useCanvasInteraction({
     isCommentMode,
     scale = 1,
-    activeComment,
-    newMarkerPos,
     setNewMarkerPos,
     iframeRef
 }: UseCanvasInteractionProps) {
@@ -53,7 +59,7 @@ export function useCanvasInteraction({
                         });
                         return;
                     }
-                } catch (err) {
+                } catch {
                     // Ignore inspector errors
                 }
             }

@@ -19,7 +19,7 @@ export async function createComment(data: {
     x: number;
     y: number;
     selector?: string;
-    selectorFallback?: any;
+    selectorFallback?: Record<string, unknown> | null;
     authorId?: string; // Optional if anon
     deviceContext?: DeviceContext;
 }) {

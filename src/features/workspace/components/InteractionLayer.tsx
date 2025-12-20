@@ -22,7 +22,7 @@ interface InteractionLayerProps {
         x: number;
         y: number;
         selector?: string;
-        selectorFallback?: any;
+        selectorFallback?: Record<string, unknown> | null;
         authorId?: string;
         deviceContext?: DeviceContext;
     }) => void;

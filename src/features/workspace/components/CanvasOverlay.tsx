@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import Konva from "konva";
 import { Stage, Layer, Rect } from "react-konva";
 import { useAppStore } from "@/store";
@@ -57,7 +57,6 @@ export default function CanvasOverlay({ width, height, url, scale = 1, iframeRef
             if (!iframe.contentDocument) return;
 
             const newPositions: Record<string, { x: number; y: number; visible: boolean }> = {};
-            let hasUpdates = false;
 
             // 1. Update Marker Positions
             comments.forEach(comment => {
@@ -73,7 +72,6 @@ export default function CanvasOverlay({ width, height, url, scale = 1, iframeRef
                         const visualX = rect.left + (rect.width * offsets.relativeX);
                         const visualY = rect.top + (rect.height * offsets.relativeY);
                         newPositions[comment.id] = { x: visualX, y: visualY, visible: true };
-                        hasUpdates = true;
                     }
                 }
             });
@@ -151,7 +149,7 @@ export default function CanvasOverlay({ width, height, url, scale = 1, iframeRef
                 iframe.removeEventListener("load", attach);
             }
         };
-    }, [url, comments, activeComment, newMarkerPos]);
+    }, [url, comments, activeComment, newMarkerPos, scale, iframeRef]);
 
     // Inspector Hover Logic
     const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {

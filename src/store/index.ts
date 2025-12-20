@@ -8,7 +8,7 @@ export interface CommentType extends Partial<Comment> {
     y: number;
     content: string;
     selector?: string | null;
-    selectorFallback?: Record<string, any> | null;
+    selectorFallback?: Record<string, unknown> | null;
     author?: {
         name: string;
         avatar?: string;
