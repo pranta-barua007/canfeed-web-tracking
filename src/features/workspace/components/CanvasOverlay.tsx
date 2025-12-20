@@ -26,8 +26,20 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
     // Inspector State
     const [hoveredRect, setHoveredRect] = useState<{ x: number; y: number; width: number; height: number; selector: string } | null>(null);
 
+
     // Local state to store calculated visual positions for tracked elements
     const [trackedPositions, setTrackedPositions] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
+
+    useEffect(() => {
+        if (comments.length > 0) {
+            const withSelectors = comments.filter(c => c.selector);
+            console.log("[CanvasOverlay] Loaded comments:", comments.length, "With selectors:", withSelectors.length);
+            if (withSelectors.length > 0) {
+                console.log("[CanvasOverlay] Sample stored selector:", withSelectors[0].selector, withSelectors[0].selectorFallback);
+            }
+        }
+    }, [comments]);
+
 
     const activeComment = comments.find(c => c.id === activeCommentId);
 

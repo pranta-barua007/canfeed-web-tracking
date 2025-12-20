@@ -68,6 +68,8 @@ export async function getComments({
             url: comments.url,
             x: comments.x,
             y: comments.y,
+            selector: comments.selector,
+            selectorFallback: comments.selectorFallback,
             resolved: comments.resolved,
             createdAt: comments.createdAt,
             updatedAt: comments.updatedAt,
