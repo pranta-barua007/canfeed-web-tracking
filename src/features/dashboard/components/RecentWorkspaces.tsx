@@ -3,6 +3,7 @@ import { Accordion } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceGroup } from "./WorkspaceGroup";
+import { connection } from "next/server";
 
 export function RecentWorkspacesSkeleton() {
     return (
@@ -28,6 +29,7 @@ export function RecentWorkspacesSkeleton() {
 }
 
 export default async function RecentWorkspaces() {
+    await connection();
     const groups = await getGroupedWorkspaces();
 
     if (groups.length === 0) return null;
