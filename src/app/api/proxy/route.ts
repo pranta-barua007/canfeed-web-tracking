@@ -11,16 +11,38 @@ export async function GET(req: NextRequest) {
     }
 
     try {
+        const targetUrlObj = new URL(targetUrl);
+        const targetOrigin = targetUrlObj.origin;
+
         const response = await axios.get(targetUrl, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Referer": targetOrigin, // Vital for hotlink protection and some access checks
+                "Accept": req.headers.get("accept") || "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             },
             responseType: "arraybuffer", // Handle binary data (images/fonts) correctly
             validateStatus: () => true,
         });
 
         const contentType = response.headers["content-type"] || "";
+
+        // SPECIAL HANDLING: SCRIPTS RETURNING HTML (404/500/Auth Errors)
+        // If the browser expects a script but gets an HTML error page, it throws "MIME type" or "Syntax" errors.
+        // We intercept this and return a valid JS file that logs the error instead.
+        const isScript = targetUrl.match(/\.(js|mjs)($|\?)/);
+        if (isScript && (contentType.includes("text/html") || response.status >= 400)) {
+            console.warn(`[Proxy] Script failed: ${targetUrl} (${response.status} ${contentType}) - Returning fallback JS.`);
+            return new NextResponse(
+                `console.error("[CanFeed Proxy] Failed to load script: ${targetUrl} (Status: ${response.status})");`,
+                {
+                    status: 200, // Return 200 so the browser executes our error logging script
+                    headers: {
+                        "Content-Type": "application/javascript",
+                        "Access-Control-Allow-Origin": "*"
+                    }
+                }
+            );
+        }
 
         // 1. If it's HTML, we inject our fixes
         if (contentType.includes("text/html")) {
@@ -31,10 +53,21 @@ export async function GET(req: NextRequest) {
             $('meta[http-equiv="Content-Security-Policy"]').remove();
             $('meta[http-equiv="X-Frame-Options"]').remove();
 
-            const targetUrlObj = new URL(targetUrl);
-            const targetOrigin = targetUrlObj.origin;
-            // Helper to make absolute URLs
-            const toAbsolute = (p: string) => new URL(p, targetUrl).href;
+            // 1a. RESOLVE BASE URL
+            // Many apps (Angular/React) use <base href="/"> to ensure assets load from root,
+            // even if the user is deep in a subpath like /about/.
+            // We must respect this, otherwise relative scripts 'runtime.js' will 404 at '/about/runtime.js'.
+            let baseUrl = targetUrl;
+            const existingBase = $('base[href]').first().attr('href');
+            if (existingBase) {
+                // Resolve the existing base relative to the targetUrl
+                // e.g. <base href="/"> on https://site.com/foo/ -> https://site.com/
+                baseUrl = new URL(existingBase, targetUrl).href;
+                $('base').remove(); // Remove original to avoid conflicts
+            }
+
+            // Helper to make absolute URLs (Using the correct Base)
+            const toAbsolute = (p: string) => new URL(p, baseUrl).href;
 
             // Get our origin (e.g. http://localhost:3000)
             const myOrigin = req.nextUrl.origin;
@@ -56,7 +89,7 @@ export async function GET(req: NextRequest) {
             // we fallback to the target origin via Base tag.
             // NOTE: <base> makes root-relative links like '/api/proxy' resolve to target!
             // That's why we MUST use 'myOrigin' in toProxy above to force them back to us.
-            $('head').prepend(`<base href="${targetUrl}">`);
+            $('head').prepend(`<base href="${baseUrl}">`);
 
             // REWRITE ATTRIBUTES INSTEAD OF <BASE>
             // This forces assets to load via our proxy (which adds CORS headers)
