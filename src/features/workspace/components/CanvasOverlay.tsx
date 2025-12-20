@@ -33,15 +33,8 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
     // Independent state for the active element highlight
     const [activeHighlightRect, setActiveHighlightRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
-    useEffect(() => {
-        if (comments.length > 0) {
-            const withSelectors = comments.filter(c => c.selector);
-            console.log("[CanvasOverlay] Loaded comments:", comments.length, "With selectors:", withSelectors.length);
-            if (withSelectors.length > 0) {
-                console.log("[CanvasOverlay] Sample stored selector:", withSelectors[0].selector, withSelectors[0].selectorFallback);
-            }
-        }
-    }, [comments]);
+    // Cache for DOM elements to avoid frequent querySelector calls
+    const elementCache = useRef<Map<string, Element>>(new Map());
 
 
     const activeComment = comments.find(c => c.id === activeCommentId);
@@ -131,6 +124,9 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
         const attach = () => {
             const win = iframe.contentWindow;
             if (win) {
+                // Clear cache on new page load/attach to avoid stale references
+                elementCache.current.clear();
+
                 win.addEventListener("scroll", handleScroll);
                 handleScroll();
                 updatePositions();
