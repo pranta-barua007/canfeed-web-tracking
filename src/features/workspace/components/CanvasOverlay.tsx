@@ -30,6 +30,9 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
     // Local state to store calculated visual positions for tracked elements
     const [trackedPositions, setTrackedPositions] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
 
+    // Independent state for the active element highlight
+    const [activeHighlightRect, setActiveHighlightRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
     useEffect(() => {
         if (comments.length > 0) {
             const withSelectors = comments.filter(c => c.selector);
@@ -60,6 +63,7 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
             const newPositions: Record<string, { x: number; y: number; visible: boolean }> = {};
             let hasUpdates = false;
 
+            // 1. Update Marker Positions
             comments.forEach(comment => {
                 if (!comment.selector) return;
 
@@ -75,12 +79,34 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                         newPositions[comment.id] = { x: visualX, y: visualY, visible: true };
                         hasUpdates = true;
                     }
-                } else {
-                    // Element not found fallback
                 }
             });
 
-            // Update tracked positions state
+            // 2. Logic for Active/New Highlight (Run every frame to stick to element)
+            let newHighlight: { x: number; y: number; width: number; height: number } | null = null;
+            let targetSelector = activeComment?.selector;
+
+            // Prioritize New Marker selection if active
+            if (newMarkerPos && newMarkerPos.selector) {
+                targetSelector = newMarkerPos.selector;
+            }
+
+            if (targetSelector) {
+                const el = getElementBySelector(targetSelector, iframe.contentDocument!);
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    newHighlight = {
+                        x: rect.left * scale,
+                        y: rect.top * scale,
+                        width: rect.width * scale,
+                        height: rect.height * scale
+                    };
+                }
+            }
+
+            // 3. Update States
+
+            // Tracked Positions
             setTrackedPositions(prev => {
                 const changed = Object.keys(newPositions).some(k =>
                     !prev[k] || Math.abs(prev[k].x - newPositions[k].x) > 0.1 || Math.abs(prev[k].y - newPositions[k].y) > 0.1
@@ -89,9 +115,18 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                 return changed ? newPositions : prev;
             });
 
+            // Active Highlight
+            setActiveHighlightRect(prev => {
+                if (!newHighlight && !prev) return null;
+                if (newHighlight && prev &&
+                    Math.abs(newHighlight.x - prev.x) < 0.1 &&
+                    Math.abs(newHighlight.y - prev.y) < 0.1 &&
+                    Math.abs(newHighlight.width - prev.width) < 0.1) return prev;
+                return newHighlight;
+            });
+
             animationFrameId = requestAnimationFrame(updatePositions);
         };
-
 
         const attach = () => {
             const win = iframe.contentWindow;
@@ -117,7 +152,7 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                 iframe.removeEventListener("load", attach);
             }
         };
-    }, [url, comments]);
+    }, [url, comments, activeComment, newMarkerPos]);
 
     // Inspector Hover Logic
     const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -241,8 +276,8 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                 onMouseLeave={() => setHoveredRect(null)}
             >
                 <Layer>
-                    {/* Inspector Highlight */}
-                    {isCommentMode && hoveredRect && (
+                    {/* Inspector Highlight (Hover) */}
+                    {isCommentMode && hoveredRect && !activeComment && !newMarkerPos && (
                         <Rect
                             x={hoveredRect.x}
                             y={hoveredRect.y}
@@ -252,6 +287,20 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                             stroke="#3b82f6"
                             strokeWidth={2}
                             listening={false} // Don't block clicks
+                        />
+                    )}
+
+                    {/* Active Comment / New Marker Highlight (Persistent Blue Box) */}
+                    {activeHighlightRect && (
+                        <Rect
+                            x={activeHighlightRect.x}
+                            y={activeHighlightRect.y}
+                            width={activeHighlightRect.width}
+                            height={activeHighlightRect.height}
+                            fill="rgba(59, 130, 246, 0.1)"
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            listening={false}
                         />
                     )}
 
