@@ -246,8 +246,6 @@ export default function CanvasOverlay({ width, height, url, scale = 1 }: CanvasO
                 }
             }
 
-            console.log("Clicked at", pos, "Selector:", selector, "Relative:", relativeX, relativeY, "HoveredRect?", hoveredRect);
-
             setNewMarkerPos({
                 x: logicalX,
                 y: logicalY,
