@@ -74,26 +74,49 @@ export async function GET(req: NextRequest) {
                     $(el).attr('src', toProxy(val));
                 }
             });
+            // OPTIMIZATION: MEDIA OFFLOADING
+            // We do NOT proxy images. We rewrite them to absolute URLs so the browser fetches them directly.
+            // This saves massive bandwidth on our server.
             $('img[src]').each((_, el) => {
                 const val = $(el).attr('src');
                 if (val && !val.startsWith('data:')) {
-                    $(el).attr('src', toProxy(val));
+                    // Direct link to source (Offloaded)
+                    $(el).attr('src', toAbsolute(val));
+                    // Add no-referrer to help with basic hotlink checks
+                    $(el).attr('referrerpolicy', 'no-referrer');
                 }
                 const srcset = $(el).attr('srcset');
                 if (srcset) {
-                    // srcset="url1 1x, url2 2x"
                     const newSrcset = srcset.split(',').map(part => {
                         const [url, desc] = part.trim().split(/\s+/);
                         if (url && !url.startsWith('data:')) {
-                            return `${toProxy(url)} ${desc || ''}`;
+                            return `${toAbsolute(url)} ${desc || ''}`;
                         }
                         return part;
                     }).join(', ');
                     $(el).attr('srcset', newSrcset);
                 }
             });
-            // We might also need to handle 'style' attributes with url(...), but that requires regex.
-            // For now, this covers the bulk of static assets.
+            // Also handle <source> tags for <picture> and <video>
+            $('source[src]').each((_, el) => {
+                const val = $(el).attr('src');
+                if (val && !val.startsWith('data:')) {
+                    $(el).attr('src', toAbsolute(val));
+                }
+            });
+            $('source[srcset]').each((_, el) => {
+                const val = $(el).attr('srcset');
+                if (val) {
+                    const newSrcset = val.split(',').map(part => {
+                        const [url, desc] = part.trim().split(/\s+/);
+                        if (url && !url.startsWith('data:')) {
+                            return `${toAbsolute(url)} ${desc || ''}`;
+                        }
+                        return part;
+                    }).join(', ');
+                    $(el).attr('srcset', newSrcset);
+                }
+            });
 
             // INJECT INTERCEPTOR SCRIPT
             const interceptorScript = `
