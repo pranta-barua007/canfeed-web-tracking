@@ -3,6 +3,7 @@ import { drizzle as drizzleVercel } from 'drizzle-orm/vercel-postgres';
 import { sql } from '@vercel/postgres';
 import { Pool } from 'pg';
 import * as schema from "./schema";
+import { DB_URL } from './config';
 
 const globalForDb = globalThis as unknown as {
     conn: Pool | undefined;
@@ -14,7 +15,7 @@ db = drizzleVercel(sql, { schema });
 
 if (process.env.NODE_ENV !== 'production') {
     const conn = globalForDb.conn ?? new Pool({
-        connectionString: process.env.POSTGRES_URL!,
+        connectionString: DB_URL!,
     });
 
     globalForDb.conn = conn;
