@@ -75,14 +75,14 @@ export async function GET(req: NextRequest) {
                 }
             });
             // OPTIMIZATION: MEDIA OFFLOADING
-            // We do NOT proxy images. We rewrite them to absolute URLs so the browser fetches them directly.
+            // We do NOT proxy images/videos/audio. We rewrite them to absolute URLs so the browser fetches them directly.
             // This saves massive bandwidth on our server.
+
+            // 1. IMAGES
             $('img[src]').each((_, el) => {
                 const val = $(el).attr('src');
                 if (val && !val.startsWith('data:')) {
-                    // Direct link to source (Offloaded)
                     $(el).attr('src', toAbsolute(val));
-                    // Add no-referrer to help with basic hotlink checks
                     $(el).attr('referrerpolicy', 'no-referrer');
                 }
                 const srcset = $(el).attr('srcset');
@@ -97,7 +97,15 @@ export async function GET(req: NextRequest) {
                     $(el).attr('srcset', newSrcset);
                 }
             });
-            // Also handle <source> tags for <picture> and <video>
+
+            // 2. VIDEO & AUDIO
+            $('video[src], audio[src]').each((_, el) => {
+                const val = $(el).attr('src');
+                if (val && !val.startsWith('data:')) {
+                    $(el).attr('src', toAbsolute(val));
+                }
+            });
+            // Handle child <source> tags for picture/video/audio
             $('source[src]').each((_, el) => {
                 const val = $(el).attr('src');
                 if (val && !val.startsWith('data:')) {
@@ -115,6 +123,38 @@ export async function GET(req: NextRequest) {
                         return part;
                     }).join(', ');
                     $(el).attr('srcset', newSrcset);
+                }
+            });
+            // Track <track> elements for subtitles
+            $('track[src]').each((_, el) => {
+                const val = $(el).attr('src');
+                if (val && !val.startsWith('data:')) {
+                    $(el).attr('src', toAbsolute(val));
+                }
+            });
+
+            // 3. OBJECTS & EMBEDS (Flash, PDF, etc)
+            $('object[data]').each((_, el) => {
+                const val = $(el).attr('data');
+                if (val && !val.startsWith('data:')) {
+                    $(el).attr('data', toAbsolute(val));
+                }
+            });
+            $('embed[src]').each((_, el) => {
+                const val = $(el).attr('src');
+                if (val && !val.startsWith('data:')) {
+                    $(el).attr('src', toAbsolute(val));
+                }
+            });
+
+            // 4. IFRAMES (Nested iframes)
+            // If the target page has iframes, we should probably let them load directly 
+            // instead of recursively proxying them, unless we want to track inside them too?
+            // For now, offloading them is safer for performance and avoids "inception" proxy loops.
+            $('iframe[src]').each((_, el) => {
+                const val = $(el).attr('src');
+                if (val && !val.startsWith('data:')) {
+                    $(el).attr('src', toAbsolute(val));
                 }
             });
 
