@@ -34,7 +34,12 @@ src/features/[feature-name]/
     - **Local Molecules**: Keep feature-specific logic (e.g., `WorkspaceGroup`) inside the feature's `components/` directory.
 - **Composition**: Use composition to pass data and callbacks down, keeping child components pure and easily testable.
 
-### 5. Git Workflow & Conventions
+### 5. Side Effects & Stabilization
+- **Stable Callbacks**: Use `useEffectEvent` to wrap callbacks that are used inside `useEffect` but shouldn't trigger the effect when they change.
+- **Preventing Render Loops**: Decouple reactive dependencies from non-reactive logic. If a dependency change should trigger a fetch/reset, call a `useEffectEvent` wrapped function inside the effect.
+- **Ref Pattern**: For stabilizing callbacks within `useCallback` or other hooks where `useEffectEvent` is restricted, use the `useRef` pattern to maintain a stable reference to the latest function.
+
+### 6. Git Workflow & Conventions
 - **Atomic Commits**: Stage and commit changes in logical, granular units. Avoid giant "refactor everything" commits.
 - **Convention**: Follow [Conventional Commits](https://www.conventionalcommits.org/):
     - `feat(feature-name): add new component`

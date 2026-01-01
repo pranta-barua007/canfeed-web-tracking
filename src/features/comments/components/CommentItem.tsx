@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DeviceIcon } from "@/components/ui/device-icon";
 import { Undo2, CircleCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { type CommentType } from "@/store";
+import { type CommentType } from "../types";
 
 interface CommentItemProps {
     comment: CommentType;

@@ -1,8 +1,8 @@
-import { useAppStore, type CommentType } from "@/store";
+import { useAppStore } from "@/store";
+import { type CommentType } from "../types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
-import { useEffectEvent } from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useEffectEvent } from "react";
 import { toggleResolveComment, getComments } from "../actions";
 import { SearchInput } from "./SearchInput";
 import { FilterMenu } from "./FilterMenu";
@@ -10,15 +10,11 @@ import { useSearchParams } from "next/navigation";
 import { CommentTabs } from "./CommentTabs";
 import { CommentEmptyState } from "./CommentEmptyState";
 import { CommentItem } from "./CommentItem";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 
 export default function CommentsSidebar() {
     const { comments, setActiveCommentId, activeCommentId, toggleCommentResolve, appendComments, setComments } = useAppStore();
     const [showResolved, setShowResolved] = useState(false);
-
-    // Infinite Scroll State
-    const [loading, setLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-
 
     const searchParams = useSearchParams();
     const targetUrl = searchParams.get("url") || "https://example.com";
@@ -36,16 +32,11 @@ export default function CommentsSidebar() {
         return undefined;
     };
 
-    // Use useEffectEvent to handle the "action" of loading comments.
-    // This function always sees the latest props/state but is stable across renders.
-    const loadMoreEvent = useEffectEvent(async (isReset: boolean) => {
-        if (loading || (!hasMore && !isReset)) return;
-        setLoading(true);
-
-        try {
-            const offset = isReset ? 0 : useAppStore.getState().comments.length;
-
-            const newComments = await getComments({
+    // Use the new reusable infinite scroll hook
+    const { ref: sentinelRef, loading, hasMore, reset } = useInfiniteScroll({
+        limit: 20,
+        fetchData: async (offset) => {
+            return await getComments({
                 url: targetUrl,
                 search: paramSearch || undefined,
                 since: getSinceDate(paramTime),
@@ -53,55 +44,34 @@ export default function CommentsSidebar() {
                 offset: offset,
                 limit: 20
             });
+        },
+        onDataLoaded: (newComments, isReset) => {
+            const mapped = newComments.map(c => ({
+                ...c,
+                author: c.author ? {
+                    name: c.author.name || "Anonymous",
+                    avatar: c.author.image || undefined
+                } : undefined
+            }));
 
-            if (newComments.length < 20) {
-                setHasMore(false);
+            if (isReset) {
+                setComments(mapped as unknown as CommentType[]);
             } else {
-                setHasMore(true);
+                appendComments(mapped as unknown as CommentType[]);
             }
-
-            if (newComments.length >= 0) {
-                const mapped = newComments.map(c => ({
-                    ...c,
-                    author: c.author ? {
-                        name: c.author.name,
-                        avatar: c.author.image || undefined
-                    } : undefined
-                }));
-
-                if (isReset) {
-                    setComments(mapped as unknown as CommentType[]);
-                } else {
-                    appendComments(mapped as unknown as CommentType[]);
-                }
-            }
-        } catch (error) {
-            console.error("Failed to load comments:", error);
-        } finally {
-            setLoading(false);
         }
     });
 
-    const sentinelRef = useRef<HTMLDivElement>(null);
-
-    // Ref callback no longer needed, use useEffect on sentinelRef instead
-    useEffect(() => {
-        if (!sentinelRef.current || !hasMore || loading) return;
-
-        const obs = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore && !loading) {
-                loadMoreEvent(false); // Safe to call inside Effect
-            }
-        });
-
-        obs.observe(sentinelRef.current);
-        return () => obs.disconnect();
-    }, [hasMore, loading]); // loadMoreEvent excluded per lint rules
+    // Use useEffectEvent to break the loop. This ensures that the reset logic
+    // has access to the latest 'reset' function without triggering the effect again.
+    const onFilterChange = useEffectEvent(() => {
+        reset();
+    });
 
     // Reset and Fetch when filters change
     useEffect(() => {
-        loadMoreEvent(true); // Reset
-    }, [targetUrl, paramSearch, paramTime, paramDeviceFilter]); // loadMoreEvent excluded per lint rules
+        onFilterChange();
+    }, [targetUrl, paramSearch, paramTime, paramDeviceFilter]);
 
     // Sort comments by createdAt descending (newest first)
     // Filter by Tab (Active vs Resolved)
@@ -132,9 +102,6 @@ export default function CommentsSidebar() {
         // Server update
         await toggleResolveComment(commentId, !currentStatus);
     };
-
-
-
 
     return (
         <div className="w-80 border-r bg-white h-full flex flex-col dark:bg-zinc-950 dark:border-zinc-800 pb-16">

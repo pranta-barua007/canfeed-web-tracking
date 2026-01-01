@@ -1,19 +1,6 @@
 import { create } from 'zustand';
-import { Comment } from '@/db/schema';
 
-// Extended Interface for UI (optimistic updates etc)
-export interface CommentType extends Partial<Comment> {
-    id: string; // ID is mandatory
-    x: number;
-    y: number;
-    content: string;
-    selector?: string | null;
-    selectorFallback?: Record<string, unknown> | null;
-    author?: {
-        name: string;
-        avatar?: string;
-    };
-}
+import { type CommentType } from '@/features/comments/types';
 
 interface AppState {
     isCommentMode: boolean;
