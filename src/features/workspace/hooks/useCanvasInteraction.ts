@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Konva from "konva";
 import { getUniqueSelector, getElementBySelector } from "@/lib/selector";
-import { type CommentType } from "@/store";
+import { type CommentType } from '@/features/comments/types';
 
 interface MarkerPos {
     x: number;
