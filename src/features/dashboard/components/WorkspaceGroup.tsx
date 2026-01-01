@@ -8,7 +8,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import NextImage from "next/image";
 import { WorkspacePageItem } from "./WorkspacePageItem";
-import { type GroupedWorkspace } from "../services";
+import { type GroupedWorkspace } from "../types";
 
 interface WorkspaceGroupProps {
     group: GroupedWorkspace;

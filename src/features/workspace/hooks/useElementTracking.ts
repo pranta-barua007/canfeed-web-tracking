@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { type CommentType } from "@/store";
+import { type CommentType } from '@/features/comments/types';
 import { getElementBySelector } from "@/lib/selector";
 
 interface UseElementTrackingProps {

@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CheckCircle2 } from "lucide-react";
-import { CommentType } from "@/store";
+import { type CommentType } from '@/features/comments/types';
+
 
 interface CommentPopoverProps {
     x: number; // Pixel position

@@ -1,7 +1,7 @@
 import React from "react";
 import { Circle, Group } from "react-konva";
 import Konva from "konva";
-import { CommentType } from "@/store";
+import { type CommentType } from '@/features/comments/types';
 
 interface CommentMarkerProps {
     x: number;
