@@ -4,9 +4,9 @@ import { db } from "@/db";
 import { comments, users } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { getComments as getCommentsService, type GetCommentsParams } from "./services";
+import { getComments as getCommentsService } from "./services";
 
-import { type DeviceContext } from "./types";
+import { type DeviceContext, type GetCommentsParams } from "./types";
 
 export async function createComment(data: {
     content: string;

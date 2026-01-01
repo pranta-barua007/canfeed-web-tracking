@@ -8,13 +8,7 @@ const CanvasOverlay = dynamic(() => import("./CanvasOverlay"), {
     ssr: false,
 });
 
-interface WorkspaceViewProps {
-    targetUrl: string;
-    width: number;
-    height: number;
-    scale: number;
-    isCommentMode: boolean;
-}
+import { type WorkspaceViewProps } from "../types";
 
 export function WorkspaceView({ targetUrl, width, height, scale, isCommentMode }: WorkspaceViewProps) {
     const [isLoading, setIsLoading] = useState(true);

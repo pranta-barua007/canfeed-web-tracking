@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Konva from "konva";
 import { Stage, Layer, Rect } from "react-konva";
 import { useAppStore } from "@/store";
@@ -8,7 +8,8 @@ import { CommentMarker } from "./CommentMarker";
 import { GhostMarker } from "./GhostMarker";
 import { InteractionLayer } from "./InteractionLayer";
 import { createComment, toggleResolveComment } from "@/features/comments/actions";
-import { getUniqueSelector, getElementBySelector } from "@/lib/selector";
+import { useElementTracking } from "../hooks/useElementTracking";
+import { getUniqueSelector } from "@/lib/selector";
 
 interface CanvasOverlayProps {
     width: number;
@@ -19,137 +20,26 @@ interface CanvasOverlayProps {
 }
 
 export default function CanvasOverlay({ width, height, url, scale = 1, iframeRef }: CanvasOverlayProps) {
-    const { isCommentMode, comments, addComment, toggleCommentResolve, activeCommentId, setActiveCommentId } = useAppStore();
+    const { isCommentMode, activeCommentId, comments, addComment, toggleCommentResolve, setActiveCommentId } = useAppStore();
+    const activeComment = comments.find(c => c.id === activeCommentId);
+
     const stageRef = useRef<Konva.Stage>(null);
     const [newMarkerPos, setNewMarkerPos] = useState<{ x: number; y: number; selector?: string; relativeX?: number; relativeY?: number } | null>(null);
-    const [scrollTop, setScrollTop] = useState(0);
+
+    const {
+        trackedPositions,
+        activeHighlightRect,
+        scrollTop
+    } = useElementTracking({
+        comments,
+        activeCommentId,
+        newMarkerPos,
+        scale,
+        iframeRef: iframeRef as React.RefObject<HTMLIFrameElement>
+    });
 
     // Inspector State
     const [hoveredRect, setHoveredRect] = useState<{ x: number; y: number; width: number; height: number; selector: string } | null>(null);
-
-
-    // Local state to store calculated visual positions for tracked elements
-    const [trackedPositions, setTrackedPositions] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
-
-    // Independent state for the active element highlight
-    const [activeHighlightRect, setActiveHighlightRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-
-    // Cache for DOM elements to avoid frequent querySelector calls
-    const elementCache = useRef<Map<string, Element>>(new Map());
-
-
-    const activeComment = comments.find(c => c.id === activeCommentId);
-
-    // Scroll Sync & Tracking Loop
-    useEffect(() => {
-        const iframe = iframeRef.current;
-        if (!iframe) return;
-
-        let animationFrameId: number;
-
-        const handleScroll = () => {
-            if (iframe.contentWindow) {
-                setScrollTop(iframe.contentWindow.scrollY);
-            }
-        };
-
-        const updatePositions = () => {
-            if (!iframe.contentDocument) return;
-
-            const newPositions: Record<string, { x: number; y: number; visible: boolean }> = {};
-
-            // 1. Update Marker Positions
-            comments.forEach(comment => {
-                if (!comment.selector) return;
-
-                const el = getElementBySelector(comment.selector, iframe.contentDocument!);
-
-                if (el) {
-                    const rect = el.getBoundingClientRect();
-                    const offsets = comment.selectorFallback as { relativeX: number; relativeY: number } | undefined;
-
-                    if (offsets) {
-                        const visualX = rect.left + (rect.width * offsets.relativeX);
-                        const visualY = rect.top + (rect.height * offsets.relativeY);
-                        newPositions[comment.id] = { x: visualX, y: visualY, visible: true };
-                    }
-                }
-            });
-
-            // 2. Logic for Active/New Highlight (Run every frame to stick to element)
-            let newHighlight: { x: number; y: number; width: number; height: number } | null = null;
-            let targetSelector = activeComment?.selector;
-
-            // Prioritize New Marker selection if active
-            if (newMarkerPos && newMarkerPos.selector) {
-                targetSelector = newMarkerPos.selector;
-            }
-
-            if (targetSelector) {
-                const el = getElementBySelector(targetSelector, iframe.contentDocument!);
-                if (el) {
-                    const rect = el.getBoundingClientRect();
-                    newHighlight = {
-                        x: rect.left * scale,
-                        y: rect.top * scale,
-                        width: rect.width * scale,
-                        height: rect.height * scale
-                    };
-                }
-            }
-
-            // 3. Update States
-
-            // Tracked Positions
-            setTrackedPositions(prev => {
-                const changed = Object.keys(newPositions).some(k =>
-                    !prev[k] || Math.abs(prev[k].x - newPositions[k].x) > 0.1 || Math.abs(prev[k].y - newPositions[k].y) > 0.1
-                ) || Object.keys(prev).some(k => !newPositions[k] && comments.find(c => c.id === k)?.selector);
-
-                return changed ? newPositions : prev;
-            });
-
-            // Active Highlight
-            setActiveHighlightRect(prev => {
-                if (!newHighlight && !prev) return null;
-                if (newHighlight && prev &&
-                    Math.abs(newHighlight.x - prev.x) < 0.1 &&
-                    Math.abs(newHighlight.y - prev.y) < 0.1 &&
-                    Math.abs(newHighlight.width - prev.width) < 0.1) return prev;
-                return newHighlight;
-            });
-
-            animationFrameId = requestAnimationFrame(updatePositions);
-        };
-
-        const attach = () => {
-            const win = iframe.contentWindow;
-            if (win) {
-                // Clear cache on new page load/attach to avoid stale references
-                elementCache.current.clear();
-
-                win.addEventListener("scroll", handleScroll);
-                handleScroll();
-                updatePositions();
-            }
-        };
-
-        if (iframe) {
-            if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-                attach();
-            } else {
-                iframe.addEventListener("load", attach);
-            }
-        }
-
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-            if (iframe && iframe.contentWindow) {
-                iframe.contentWindow.removeEventListener("scroll", handleScroll);
-                iframe.removeEventListener("load", attach);
-            }
-        };
-    }, [url, comments, activeComment, newMarkerPos, scale, iframeRef]);
 
     // Inspector Hover Logic
     const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -224,7 +114,7 @@ export default function CanvasOverlay({ width, height, url, scale = 1, iframeRef
                 // Safest to re-query to get exact relative offset logic consistent.
 
                 if (iframe?.contentDocument) {
-                    const el = getElementBySelector(selector, iframe.contentDocument); // Use selector we found
+                    const el = (iframe.contentDocument as unknown as { querySelector: (s: string) => Element }).querySelector(selector);
                     if (el) {
                         const rect = el.getBoundingClientRect();
                         relativeX = (logicalX - rect.left) / rect.width;

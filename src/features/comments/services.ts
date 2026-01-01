@@ -4,15 +4,7 @@ import { db } from "@/db";
 import { comments, users } from "@/db/schema";
 import { eq, desc, and, ilike, gt, sql, or } from "drizzle-orm";
 
-export type GetCommentsParams = {
-    url: string;
-    search?: string;
-    resolved?: boolean; // filter by status
-    limit?: number;
-    offset?: number;
-    device?: string; // filter by device context (rough match)
-    since?: Date; // filter by time
-};
+import { type GetCommentsParams } from "./types";
 
 export async function getComments({
     url,

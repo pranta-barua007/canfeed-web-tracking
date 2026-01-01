@@ -1,8 +1,7 @@
 "use client";
 
 import { CommentPopover } from "./CommentPopover";
-import { type CommentType } from "@/store";
-import { type DeviceContext } from "@/features/comments/actions";
+import { type CommentType, type DeviceContext } from "@/features/comments/types";
 
 interface InteractionLayerProps {
     activeComment: CommentType | undefined;

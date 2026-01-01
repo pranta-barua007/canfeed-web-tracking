@@ -3,21 +3,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Monitor, Laptop, Tablet, Smartphone } from "lucide-react";
 
-export const DEVICE_PRESETS: Record<string, { width: number; height: number }> = {
-    "desktop-large": { width: 1920, height: 1080 },
-    desktop: { width: 1440, height: 900 },
-    tablet: { width: 768, height: 1024 },
-    mobile: { width: 375, height: 667 },
-    pixel7: { width: 412, height: 915 },
-    iphone: { width: 390, height: 844 },
-};
-
-interface DeviceSelectorProps {
-    device: string;
-    onChange: (device: string) => void;
-    scale: number;
-    onScaleChange: (scale: number) => void;
-}
+import { type DeviceSelectorProps } from "../types";
 
 export function DeviceSelector({ device, onChange, scale, onScaleChange }: DeviceSelectorProps) {
     return (

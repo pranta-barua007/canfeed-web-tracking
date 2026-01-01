@@ -4,20 +4,7 @@ import { db } from "@/db";
 import { comments } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 
-export type WorkspacePage = {
-    url: string;
-    path: string;
-    commentCount: number;
-    lastActive: Date;
-};
-
-export type GroupedWorkspace = {
-    domain: string;
-    favicon: string;
-    lastActive: Date;
-    totalComments: number;
-    pages: WorkspacePage[];
-};
+import { type GroupedWorkspace } from "./types";
 
 export async function getGroupedWorkspaces(): Promise<GroupedWorkspace[]> {
     try {

@@ -6,10 +6,12 @@ import { useAppStore } from "@/store";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import CommentsSidebar from "@/features/comments/components/CommentsSidebar";
-import { DeviceSelector, DEVICE_PRESETS } from "@/features/workspace/components/DeviceSelector";
+import { DeviceSelector } from "@/features/workspace/components/DeviceSelector";
+import { DEVICE_PRESETS } from "@/features/workspace/types";
 import { WorkspaceView } from "@/features/workspace/components/WorkspaceView";
 import { ShareButton } from "@/features/workspace/components/ShareButton";
 import Link from "next/link";
+import { WorkspaceSkeleton } from "@/features/workspace/components/WorkspaceSkeleton";
 
 function WorkspaceContent() {
     const searchParams = useSearchParams();
@@ -171,7 +173,7 @@ function WorkspaceContent() {
 
 export default function WorkspacePage() {
     return (
-        <Suspense fallback={<div>Loading workspace...</div>}>
+        <Suspense fallback={<WorkspaceSkeleton />}>
             <WorkspaceContent />
         </Suspense>
     )
