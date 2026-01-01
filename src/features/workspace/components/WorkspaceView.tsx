@@ -46,7 +46,7 @@ export function WorkspaceView({ targetUrl, width, height, scale, isCommentMode }
                 ref={iframeRef}
                 id="proxy-iframe"
                 key={targetUrl} // Force remount on URL change to clear state/listeners
-                src={`/api/proxy?url=${encodeURIComponent(targetUrl)}`}
+                src={`/api/proxy/v2?url=${encodeURIComponent(targetUrl)}`}
                 className="w-full h-full border-none"
                 style={{ pointerEvents: isCommentMode ? "none" : "auto" }} // Pass through clicks unless commenting
 
