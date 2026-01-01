@@ -3,165 +3,165 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 
 async function handleRequest(req: NextRequest) {
-    const searchParams = req.nextUrl.searchParams;
-    const targetUrl = searchParams.get("url");
+  const searchParams = req.nextUrl.searchParams;
+  const targetUrl = searchParams.get("url");
 
-    if (!targetUrl) {
-        return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+  if (!targetUrl) {
+    return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+  }
+
+  try {
+    const targetUrlObj = new URL(targetUrl);
+    const targetOrigin = targetUrlObj.origin;
+    const myOrigin = req.nextUrl.origin;
+
+    // 1. Prepare Request Headers
+    const requestHeaders: Record<string, string> = {
+      "X-Forwarded-For": req.headers.get("x-forwarded-for") || (req as unknown as { ip?: string }).ip || "127.0.0.1",
+    };
+
+    const headersToForward = [
+      "accept",
+      "accept-language",
+      "cache-control",
+      "pragma",
+      "sec-ch-ua",
+      "sec-ch-ua-mobile",
+      "sec-ch-ua-platform",
+      "user-agent",
+      "cookie",
+    ];
+
+    headersToForward.forEach(header => {
+      const value = req.headers.get(header);
+      if (value) requestHeaders[header] = value;
+    });
+
+    // Match origin/referer to target
+    requestHeaders["Referer"] = targetOrigin;
+    requestHeaders["Origin"] = targetOrigin;
+
+    // 2. Handle POST Body
+    let body = null;
+    if (req.method === "POST") {
+      try {
+        const arrayBuffer = await req.arrayBuffer();
+        if (arrayBuffer.byteLength > 0) {
+          body = Buffer.from(arrayBuffer);
+          requestHeaders["content-type"] = req.headers.get("content-type") || "application/json";
+          requestHeaders["content-length"] = body.length.toString();
+        }
+      } catch (e) {
+        console.warn("[Proxy] Body read error:", e);
+      }
     }
 
-    try {
-        const targetUrlObj = new URL(targetUrl);
-        const targetOrigin = targetUrlObj.origin;
-        const myOrigin = req.nextUrl.origin;
+    // 3. Fetch from Target
+    const response = await axios({
+      method: req.method,
+      url: targetUrl,
+      headers: requestHeaders,
+      data: body,
+      responseType: "arraybuffer",
+      validateStatus: () => true,
+    });
 
-        // 1. Prepare Request Headers
-        const requestHeaders: Record<string, string> = {
-            "X-Forwarded-For": req.headers.get("x-forwarded-for") || (req as any).ip || "127.0.0.1",
-        };
+    // 4. Prepare Response Headers
+    const contentType = response.headers["content-type"] || "";
+    const responseHeaders = new Headers();
 
-        const headersToForward = [
-            "accept",
-            "accept-language",
-            "cache-control",
-            "pragma",
-            "sec-ch-ua",
-            "sec-ch-ua-mobile",
-            "sec-ch-ua-platform",
-            "user-agent",
-            "cookie",
-        ];
-
-        headersToForward.forEach(header => {
-            const value = req.headers.get(header);
-            if (value) requestHeaders[header] = value;
-        });
-
-        // Match origin/referer to target
-        requestHeaders["Referer"] = targetOrigin;
-        requestHeaders["Origin"] = targetOrigin;
-
-        // 2. Handle POST Body
-        let body = null;
-        if (req.method === "POST") {
-            try {
-                const arrayBuffer = await req.arrayBuffer();
-                if (arrayBuffer.byteLength > 0) {
-                    body = Buffer.from(arrayBuffer);
-                    requestHeaders["content-type"] = req.headers.get("content-type") || "application/json";
-                    requestHeaders["content-length"] = body.length.toString();
-                }
-            } catch (e) {
-                console.warn("[Proxy] Body read error:", e);
-            }
+    const headersToReturn = ["content-type", "cache-control", "last-modified", "etag", "set-cookie"];
+    headersToReturn.forEach(header => {
+      if (response.headers[header]) {
+        const val = response.headers[header];
+        if (Array.isArray(val)) {
+          val.forEach(v => responseHeaders.append(header, v));
+        } else {
+          responseHeaders.set(header, val);
         }
+      }
+    });
 
-        // 3. Fetch from Target
-        const response = await axios({
-            method: req.method,
-            url: targetUrl,
-            headers: requestHeaders,
-            data: body,
-            responseType: "arraybuffer",
-            validateStatus: () => true,
-        });
+    responseHeaders.set("Access-Control-Allow-Origin", "*");
+    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    responseHeaders.set("Access-Control-Allow-Headers", "*");
 
-        // 4. Prepare Response Headers
-        const contentType = response.headers["content-type"] || "";
-        const responseHeaders = new Headers();
+    const status = response.status;
+    const noBodyStatus = [204, 205, 304];
 
-        const headersToReturn = ["content-type", "cache-control", "last-modified", "etag", "set-cookie"];
-        headersToReturn.forEach(header => {
-            if (response.headers[header]) {
-                const val = response.headers[header];
-                if (Array.isArray(val)) {
-                    val.forEach(v => responseHeaders.append(header, v));
-                } else {
-                    responseHeaders.set(header, val);
-                }
-            }
-        });
+    // Guard against NextResponse crash on 204
+    if (noBodyStatus.includes(status)) {
+      return new Response(null, { status, headers: responseHeaders });
+    }
 
-        responseHeaders.set("Access-Control-Allow-Origin", "*");
-        responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        responseHeaders.set("Access-Control-Allow-Headers", "*");
+    // 5. Handle Content Types
+    const isScript = targetUrl.match(/\.(js|mjs)($|\?)/);
 
-        const status = response.status;
-        const noBodyStatus = [204, 205, 304];
+    // SURGICAL SCRIPT SPOOFING
+    if (isScript) {
+      if (contentType.includes("text/html") || status >= 400) {
+        return new Response(
+          `console.error("[CanFeed Proxy] Script error: ${targetUrl} (${status})");`,
+          { status: 200, headers: { "Content-Type": "application/javascript", "Access-Control-Allow-Origin": "*" } }
+        );
+      }
+      if (targetUrl.includes('cookiebot.com') || targetUrl.includes('googletagmanager.com') || targetUrl.includes('google-analytics.com')) {
+        let js = Buffer.from(response.data).toString('utf-8');
+        js = js.replace(/window\.location\.hostname/g, JSON.stringify(targetUrlObj.hostname));
+        js = js.replace(/location\.hostname/g, JSON.stringify(targetUrlObj.hostname));
+        return new Response(js, { status: 200, headers: responseHeaders });
+      }
+      return new Response(response.data, { status: 200, headers: responseHeaders });
+    }
 
-        // Guard against NextResponse crash on 204
-        if (noBodyStatus.includes(status)) {
-            return new Response(null, { status, headers: responseHeaders });
+    // HTML REWRITING
+    if (contentType.includes("text/html")) {
+      const html = Buffer.from(response.data).toString("utf-8");
+      const $ = cheerio.load(html);
+
+      $('meta[http-equiv="Content-Security-Policy"]').remove();
+      $('meta[http-equiv="X-Frame-Options"]').remove();
+
+      let baseUrl = targetUrl;
+      const existingBase = $('base[href]').first().attr('href');
+      if (existingBase) {
+        baseUrl = new URL(existingBase, targetUrl).href;
+        $('base').remove();
+      }
+
+      const toAbsolute = (p: string) => new URL(p, baseUrl).href;
+      const toProxy = (p: string) => {
+        const abs = toAbsolute(p);
+        let url = `${myOrigin}/api/proxy/v2?url=${encodeURIComponent(abs)}`;
+        if (abs.includes("/_next/")) url += "&__next_bypass=/_next/";
+        return url;
+      };
+
+      $('head').prepend(`<base href="${baseUrl}">`);
+
+      $('link[href], script[src]').each((_, el) => {
+        const attr = el.tagName === 'link' ? 'href' : 'src';
+        const val = $(el).attr(attr);
+        if (val && !val.startsWith('data:') && !val.startsWith(targetUrl)) {
+          $(el).attr(attr, toProxy(val));
         }
+      });
 
-        // 5. Handle Content Types
-        const isScript = targetUrl.match(/\.(js|mjs)($|\?)/);
-
-        // SURGICAL SCRIPT SPOOFING
-        if (isScript) {
-            if (contentType.includes("text/html") || status >= 400) {
-                return new Response(
-                    `console.error("[CanFeed Proxy] Script error: ${targetUrl} (${status})");`,
-                    { status: 200, headers: { "Content-Type": "application/javascript", "Access-Control-Allow-Origin": "*" } }
-                );
-            }
-            if (targetUrl.includes('cookiebot.com') || targetUrl.includes('googletagmanager.com') || targetUrl.includes('google-analytics.com')) {
-                let js = Buffer.from(response.data).toString('utf-8');
-                js = js.replace(/window\.location\.hostname/g, JSON.stringify(targetUrlObj.hostname));
-                js = js.replace(/location\.hostname/g, JSON.stringify(targetUrlObj.hostname));
-                return new Response(js, { status: 200, headers: responseHeaders });
-            }
-            return new Response(response.data, { status: 200, headers: responseHeaders });
+      $('img[src], video[src], audio[src], source[src], track[src], object[data], embed[src], iframe[src]').each((_, el) => {
+        const attr = el.tagName === 'object' ? 'data' : 'src';
+        const val = $(el).attr(attr);
+        if (val && !val.startsWith('data:')) {
+          $(el).attr(attr, toAbsolute(val));
+          if (el.tagName === 'img') $(el).attr('referrerpolicy', 'no-referrer');
         }
+      });
 
-        // HTML REWRITING
-        if (contentType.includes("text/html")) {
-            const html = Buffer.from(response.data).toString("utf-8");
-            const $ = cheerio.load(html);
+      $('link[rel*="font"], link[as="font"]').each((_, el) => {
+        const val = $(el).attr('href');
+        if (val) $(el).attr('href', toProxy(val));
+      });
 
-            $('meta[http-equiv="Content-Security-Policy"]').remove();
-            $('meta[http-equiv="X-Frame-Options"]').remove();
-
-            let baseUrl = targetUrl;
-            const existingBase = $('base[href]').first().attr('href');
-            if (existingBase) {
-                baseUrl = new URL(existingBase, targetUrl).href;
-                $('base').remove();
-            }
-
-            const toAbsolute = (p: string) => new URL(p, baseUrl).href;
-            const toProxy = (p: string) => {
-                const abs = toAbsolute(p);
-                let url = `${myOrigin}/api/proxy/v2?url=${encodeURIComponent(abs)}`;
-                if (abs.includes("/_next/")) url += "&__next_bypass=/_next/";
-                return url;
-            };
-
-            $('head').prepend(`<base href="${baseUrl}">`);
-
-            $('link[href], script[src]').each((_, el) => {
-                const attr = el.tagName === 'link' ? 'href' : 'src';
-                const val = $(el).attr(attr);
-                if (val && !val.startsWith('data:') && !val.startsWith(targetUrl)) {
-                    $(el).attr(attr, toProxy(val));
-                }
-            });
-
-            $('img[src], video[src], audio[src], source[src], track[src], object[data], embed[src], iframe[src]').each((_, el) => {
-                const attr = el.tagName === 'object' ? 'data' : 'src';
-                const val = $(el).attr(attr);
-                if (val && !val.startsWith('data:')) {
-                    $(el).attr(attr, toAbsolute(val));
-                    if (el.tagName === 'img') $(el).attr('referrerpolicy', 'no-referrer');
-                }
-            });
-
-            $('link[rel*="font"], link[as="font"]').each((_, el) => {
-                const val = $(el).attr('href');
-                if (val) $(el).attr('href', toProxy(val));
-            });
-
-            const interceptorCode = `
+      const interceptorCode = `
 (function() {
   var REAL_ORIGIN = ${JSON.stringify(myOrigin)};
   var PROXY_ENDPOINT = REAL_ORIGIN + '/api/proxy/v2';
@@ -301,42 +301,42 @@ async function handleRequest(req: NextRequest) {
 })();
 `;
 
-            let finalHtml = $.html();
-            finalHtml = finalHtml.replace('<head>', '<head><script>' + interceptorCode + '</script>');
+      let finalHtml = $.html();
+      finalHtml = finalHtml.replace('<head>', '<head><script>' + interceptorCode + '</script>');
 
-            return new Response(finalHtml, { status: 200, headers: responseHeaders });
-        }
-
-        // CSS REWRITING
-        if (contentType.includes("text/css")) {
-            let css = Buffer.from(response.data).toString("utf-8");
-            css = css.replace(/url\s*\(\s*(['"]?)(.*?)\1\s*\)/gi, (match, quote, url) => {
-                if (url.startsWith("data:")) return match;
-                try {
-                    const abs = new URL(url, targetUrl).href;
-                    return `url(${quote}${myOrigin}/api/proxy/v2?url=${encodeURIComponent(abs)}${quote})`;
-                } catch { return match; }
-            });
-            return new Response(css, { status, headers: responseHeaders });
-        }
-
-        return new Response(response.data, { status, headers: responseHeaders });
-
-    } catch (error) {
-        console.error("Proxy error:", targetUrl, error);
-        return NextResponse.json({ error: "Proxy Failed" }, { status: 500 });
+      return new Response(finalHtml, { status: 200, headers: responseHeaders });
     }
+
+    // CSS REWRITING
+    if (contentType.includes("text/css")) {
+      let css = Buffer.from(response.data).toString("utf-8");
+      css = css.replace(/url\s*\(\s*(['"]?)(.*?)\1\s*\)/gi, (match, quote, url) => {
+        if (url.startsWith("data:")) return match;
+        try {
+          const abs = new URL(url, targetUrl).href;
+          return `url(${quote}${myOrigin}/api/proxy/v2?url=${encodeURIComponent(abs)}${quote})`;
+        } catch { return match; }
+      });
+      return new Response(css, { status, headers: responseHeaders });
+    }
+
+    return new Response(response.data, { status, headers: responseHeaders });
+
+  } catch (error) {
+    console.error("Proxy error:", targetUrl, error);
+    return NextResponse.json({ error: "Proxy Failed" }, { status: 500 });
+  }
 }
 
 export async function GET(r: NextRequest) { return handleRequest(r); }
 export async function POST(r: NextRequest) { return handleRequest(r); }
 export async function OPTIONS() {
-    return new Response(null, {
-        status: 204,
-        headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        },
-    });
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+    },
+  });
 }
