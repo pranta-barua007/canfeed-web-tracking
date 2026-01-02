@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { db } from "@/db";
-import { comments } from "@/db/schema";
+import { comment } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 
 import { type GroupedWorkspace } from "./types";
@@ -10,13 +10,13 @@ export async function getGroupedWorkspaces(): Promise<GroupedWorkspace[]> {
     try {
         // Fetch all unique URLs with their latest activity and count
         const stats = await db.select({
-            url: comments.url,
-            lastActive: sql<Date>`MAX(${comments.createdAt})`,
+            url: comment.url,
+            lastActive: sql<Date>`MAX(${comment.createdAt})`,
             count: sql<number>`COUNT(*)`,
         })
-            .from(comments)
-            .groupBy(comments.url)
-            .orderBy(desc(sql`MAX(${comments.createdAt})`));
+            .from(comment)
+            .groupBy(comment.url)
+            .orderBy(desc(sql`MAX(${comment.createdAt})`));
 
         // Group by Domain in Memory
         const groups: Record<string, GroupedWorkspace> = {};

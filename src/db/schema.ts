@@ -1,50 +1,103 @@
-import { pgTable, text, timestamp, boolean, uuid, jsonb, doublePrecision } from "drizzle-orm/pg-core";
-import { type InferSelectModel } from "drizzle-orm";
+import { pgTable, text, timestamp, boolean, uuid, jsonb, doublePrecision, index } from "drizzle-orm/pg-core";
+import { type InferSelectModel, relations } from "drizzle-orm";
 
-export type User = InferSelectModel<typeof users>;
-export type Comment = InferSelectModel<typeof comments>;
-
-// --- Better Auth Schema (Simplified/Standard) ---
-export const users = pgTable("user", {
+export const user = pgTable("user", {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
-    emailVerified: boolean("emailVerified").notNull(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
     image: text("image"),
-    createdAt: timestamp("createdAt").notNull(),
-    updatedAt: timestamp("updatedAt").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+        .defaultNow()
+        .$onUpdate(() => /* @__PURE__ */ new Date())
+        .notNull(),
 });
 
-export const sessions = pgTable("session", {
-    id: text("id").primaryKey(),
-    expiresAt: timestamp("expiresAt").notNull(),
-    ipAddress: text("ipAddress"),
-    userAgent: text("userAgent"),
-    userId: text("userId").notNull().references(() => users.id),
-});
+export const session = pgTable(
+    "session",
+    {
+        id: text("id").primaryKey(),
+        expiresAt: timestamp("expires_at").notNull(),
+        token: text("token").notNull().unique(),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        updatedAt: timestamp("updated_at")
+            .$onUpdate(() => /* @__PURE__ */ new Date())
+            .notNull(),
+        ipAddress: text("ip_address"),
+        userAgent: text("user_agent"),
+        userId: text("user_id")
+            .notNull()
+            .references(() => user.id, { onDelete: "cascade" }),
+    },
+    (table) => [index("session_userId_idx").on(table.userId)],
+);
 
-export const accounts = pgTable("account", {
-    id: text("id").primaryKey(),
-    accountId: text("accountId").notNull(),
-    providerId: text("providerId").notNull(),
-    userId: text("userId").notNull().references(() => users.id),
-    accessToken: text("accessToken"),
-    refreshToken: text("refreshToken"),
-    idToken: text("idToken"),
-    expiresAt: timestamp("expiresAt"),
-    password: text("password"),
-});
+export const account = pgTable(
+    "account",
+    {
+        id: text("id").primaryKey(),
+        accountId: text("account_id").notNull(),
+        providerId: text("provider_id").notNull(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => user.id, { onDelete: "cascade" }),
+        accessToken: text("access_token"),
+        refreshToken: text("refresh_token"),
+        idToken: text("id_token"),
+        accessTokenExpiresAt: timestamp("access_token_expires_at"),
+        refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+        scope: text("scope"),
+        password: text("password"),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        updatedAt: timestamp("updated_at")
+            .$onUpdate(() => /* @__PURE__ */ new Date())
+            .notNull(),
+    },
+    (table) => [index("account_userId_idx").on(table.userId)],
+);
 
-export const verificationTokens = pgTable("verificationToken", {
-    id: text("id").primaryKey(),
-    identifier: text("identifier").notNull(),
-    value: text("value").notNull(),
-    expiresAt: timestamp("expiresAt").notNull(),
-});
+export const verification = pgTable(
+    "verification",
+    {
+        id: text("id").primaryKey(),
+        identifier: text("identifier").notNull(),
+        value: text("value").notNull(),
+        expiresAt: timestamp("expires_at").notNull(),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+        updatedAt: timestamp("updated_at")
+            .defaultNow()
+            .$onUpdate(() => /* @__PURE__ */ new Date())
+            .notNull(),
+    },
+    (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+export const userRelations = relations(user, ({ many }) => ({
+    sessions: many(session),
+    accounts: many(account),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+    user: one(user, {
+        fields: [session.userId],
+        references: [user.id],
+    }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+    user: one(user, {
+        fields: [account.userId],
+        references: [user.id],
+    }),
+}));
+
+export type User = InferSelectModel<typeof user>;
+export type Comment = InferSelectModel<typeof comment>;
 
 // --- CanFeed Domain Schema ---
 
-export const comments = pgTable("comment", {
+export const comment = pgTable("comment", {
     id: uuid("id").primaryKey().defaultRandom(),
     content: text("content").notNull(),
 
@@ -65,7 +118,7 @@ export const comments = pgTable("comment", {
     resolved: boolean("resolved").default(false),
 
     // Relations
-    authorId: text("authorId").references(() => users.id),
+    authorId: text("authorId").references(() => user.id),
     parentId: uuid("parentId"), // For threading
 
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

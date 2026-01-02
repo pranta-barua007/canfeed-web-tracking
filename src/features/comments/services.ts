@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { db } from "@/db";
-import { comments, users } from "@/db/schema";
+import { comment, user } from "@/db/schema";
 import { eq, desc, and, ilike, gt, sql, or } from "drizzle-orm";
 
 import { type GetCommentsParams } from "./types";
@@ -17,18 +17,18 @@ export async function getComments({
 }: GetCommentsParams) {
     console.log("[getComments] Params:", { url, search, resolved, limit, offset, since });
     try {
-        const whereConditions = [eq(comments.url, url)];
+        const whereConditions = [eq(comment.url, url)];
 
         if (resolved !== undefined) {
-            whereConditions.push(eq(comments.resolved, resolved));
+            whereConditions.push(eq(comment.resolved, resolved));
         }
 
         if (since) {
-            whereConditions.push(gt(comments.createdAt, since));
+            whereConditions.push(gt(comment.createdAt, since));
         }
 
         if (search) {
-            whereConditions.push(ilike(comments.content, `%${search}%`));
+            whereConditions.push(ilike(comment.content, `%${search}%`));
         }
 
         // Device Filter (Multi-select)
@@ -38,11 +38,11 @@ export async function getComments({
 
             for (const d of devices) {
                 if (d === "mobile") {
-                    deviceConditions.push(sql`cast(${comments.deviceContext}->>'width' as integer) < 500`);
+                    deviceConditions.push(sql`cast(${comment.deviceContext}->>'width' as integer) < 500`);
                 } else if (d === "tablet") {
-                    deviceConditions.push(sql`cast(${comments.deviceContext}->>'width' as integer) >= 500 AND cast(${comments.deviceContext}->>'width' as integer) < 1000`);
+                    deviceConditions.push(sql`cast(${comment.deviceContext}->>'width' as integer) >= 500 AND cast(${comment.deviceContext}->>'width' as integer) < 1000`);
                 } else if (d === "desktop") {
-                    deviceConditions.push(sql`cast(${comments.deviceContext}->>'width' as integer) >= 1000`);
+                    deviceConditions.push(sql`cast(${comment.deviceContext}->>'width' as integer) >= 1000`);
                 }
             }
 
@@ -55,34 +55,34 @@ export async function getComments({
         }
 
         const data = await db.select({
-            id: comments.id,
-            content: comments.content,
-            url: comments.url,
-            x: comments.x,
-            y: comments.y,
-            selector: comments.selector,
-            selectorFallback: comments.selectorFallback,
-            resolved: comments.resolved,
-            createdAt: comments.createdAt,
-            updatedAt: comments.updatedAt,
-            authorId: comments.authorId,
-            deviceContext: comments.deviceContext,
+            id: comment.id,
+            content: comment.content,
+            url: comment.url,
+            x: comment.x,
+            y: comment.y,
+            selector: comment.selector,
+            selectorFallback: comment.selectorFallback,
+            resolved: comment.resolved,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+            authorId: comment.authorId,
+            deviceContext: comment.deviceContext,
             author: {
-                id: users.id,
-                name: users.name,
-                image: users.image,
+                id: user.id,
+                name: user.name,
+                image: user.image,
             }
         })
-            .from(comments)
-            .leftJoin(users, eq(comments.authorId, users.id))
+            .from(comment)
+            .leftJoin(user, eq(comment.authorId, user.id))
             .where(and(...whereConditions))
-            .orderBy(desc(comments.createdAt))
+            .orderBy(desc(comment.createdAt))
             .limit(limit)
             .offset(offset);
 
         return data;
     } catch (error) {
-        console.error("Failed to fetch comments:", error);
+        console.error("Failed to fetch comment:", error);
         return [];
     }
 }

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { comments, users } from "@/db/schema";
+import { comment, user } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getComments as getCommentsService } from "./services";
@@ -24,7 +24,7 @@ export async function createComment(data: {
 
         // Ensure 'anon' user exists to satisfy FK
         if (authorId === "anon") {
-            await db.insert(users).values({
+            await db.insert(user).values({
                 id: "anon",
                 name: "Anonymous",
                 email: "anon@example.com",
@@ -34,7 +34,7 @@ export async function createComment(data: {
             }).onConflictDoNothing().execute();
         }
 
-        const [newComment] = await db.insert(comments).values({
+        const [newComment] = await db.insert(comment).values({
             content: data.content,
             url: data.url,
             x: data.x,
@@ -56,9 +56,9 @@ export async function createComment(data: {
 
 export async function toggleResolveComment(commentId: string, resolved: boolean) {
     try {
-        await db.update(comments)
+        await db.update(comment)
             .set({ resolved, updatedAt: new Date() })
-            .where(eq(comments.id, commentId));
+            .where(eq(comment.id, commentId));
 
         revalidatePath("/workspace");
         return { success: true };
