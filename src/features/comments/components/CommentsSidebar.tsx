@@ -92,7 +92,11 @@ export default function CommentsSidebar() {
         });
 
     const handleCommentClick = (commentId: string) => {
-        setActiveCommentId(commentId);
+        if (activeCommentId === commentId) {
+            setActiveCommentId(null);
+        } else {
+            setActiveCommentId(commentId);
+        }
     };
 
     const handleResolveToggle = async (e: React.MouseEvent, commentId: string, currentStatus: boolean) => {
