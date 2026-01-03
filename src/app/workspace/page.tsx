@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useCallback } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Suspense, useEffect, useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAppStore } from "@/store";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -15,27 +15,26 @@ import { WorkspaceSkeleton } from "@/features/workspace/components/WorkspaceSkel
 
 function WorkspaceContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
 
-    const targetUrl = searchParams.get("url") || "https://example.com";
-    const paramDevice = searchParams.get("device") || "desktop-large";
-    const paramScale = parseFloat(searchParams.get("scale") || "1.0");
+    const initialUrl = searchParams.get("url") || "https://example.com";
+    const initialDevice = searchParams.get("device") || "desktop-large";
+    const initialScale = parseFloat(searchParams.get("scale") || "1.0");
 
+    const [targetUrl, setTargetUrl] = useState(initialUrl);
+    const [device, setDevice] = useState(initialDevice);
     const { isCommentMode, toggleCommentMode, deviceScale, setDeviceScale } = useAppStore();
 
     // Derived State
-    const device = paramDevice;
     const dimensions = DEVICE_PRESETS[device] || DEVICE_PRESETS["desktop-large"];
 
     // Sync Scale State (URL -> Store)
     useEffect(() => {
-        if (paramScale !== deviceScale) setDeviceScale(paramScale);
-    }, [paramScale, deviceScale, setDeviceScale]);
+        if (initialScale !== deviceScale) setDeviceScale(initialScale);
+    }, [initialScale, deviceScale, setDeviceScale]);
 
-    // Helper to update URL without refreshing
+    // Helper to update URL without refreshing (Shallow update)
     const updateUrl = useCallback((updates: Record<string, string | null>) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(window.location.search);
         let changed = false;
 
         Object.entries(updates).forEach(([key, value]) => {
@@ -51,9 +50,15 @@ function WorkspaceContent() {
         });
 
         if (changed) {
-            router.replace(`${pathname}?${params.toString()}`);
+            // Update local state for immediate feedback
+            if (updates.url) setTargetUrl(updates.url);
+            if (updates.device) setDevice(updates.device);
+            if (updates.scale) setDeviceScale(parseFloat(updates.scale));
+
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
         }
-    }, [searchParams, router, pathname]);
+    }, [setDeviceScale]);
 
     // Handle Device Change
     const changeDevice = useCallback((newDevice: string) => {
@@ -99,7 +104,8 @@ function WorkspaceContent() {
                 );
 
                 if (matchingDevice && matchingDevice !== device) {
-                    changeDevice(matchingDevice);
+                    // Wrap in timeout to avoid sync setState during effect (lint fix)
+                    setTimeout(() => changeDevice(matchingDevice), 0);
                     return;
                 }
             }
