@@ -23,8 +23,14 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
     isCommentMode: false,
-    toggleCommentMode: () => set((state) => ({ isCommentMode: !state.isCommentMode })),
-    setCommentMode: (mode) => set({ isCommentMode: mode }),
+    toggleCommentMode: () => set((state) => ({
+        isCommentMode: !state.isCommentMode,
+        activeCommentId: null
+    })),
+    setCommentMode: (mode) => set({
+        isCommentMode: mode,
+        activeCommentId: null
+    }),
 
     comments: [],
     addComment: (c) => set((state) => ({ comments: [...state.comments, c] })),

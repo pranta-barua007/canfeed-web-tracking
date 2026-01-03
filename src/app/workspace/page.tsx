@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useCallback } from "react";
+import { Suspense, useEffect, useCallback, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useAppStore } from "@/store";
 import { Switch } from "@/components/ui/switch";
@@ -18,42 +18,67 @@ function WorkspaceContent() {
     const router = useRouter();
     const pathname = usePathname();
 
+    // Source of Truth for Navigation
     const targetUrl = searchParams.get("url") || "https://example.com";
+
+    // UI Local State (Instant & Shallow)
     const paramDevice = searchParams.get("device") || "desktop-large";
     const paramScale = parseFloat(searchParams.get("scale") || "1.0");
-
+    const [device, setDevice] = useState(paramDevice);
     const { isCommentMode, toggleCommentMode, deviceScale, setDeviceScale } = useAppStore();
 
-    // Derived State
-    const device = paramDevice;
-    const dimensions = DEVICE_PRESETS[device] || DEVICE_PRESETS["desktop-large"];
+    // Sync UI state if URL params change externally (History back/forward or Home navigation)
+    useEffect(() => {
+        setDevice(paramDevice);
+    }, [paramDevice]);
 
-    // Sync Scale State (URL -> Store)
     useEffect(() => {
         if (paramScale !== deviceScale) setDeviceScale(paramScale);
     }, [paramScale, deviceScale, setDeviceScale]);
 
-    // Helper to update URL without refreshing
+    // Derived State
+    const dimensions = DEVICE_PRESETS[device] || DEVICE_PRESETS["desktop-large"];
+
+    // Smart Hybrid URL Update
     const updateUrl = useCallback((updates: Record<string, string | null>) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(window.location.search);
         let changed = false;
+        let isNavigation = false;
 
         Object.entries(updates).forEach(([key, value]) => {
             if (value === null) {
                 if (params.has(key)) {
                     params.delete(key);
                     changed = true;
+                    if (key === 'url') isNavigation = true;
                 }
             } else if (params.get(key) !== value) {
                 params.set(key, value);
                 changed = true;
+                if (key === 'url') isNavigation = true;
             }
         });
 
         if (changed) {
-            router.replace(`${pathname}?${params.toString()}`);
+            const newUrl = `${pathname}?${params.toString()}`;
+
+            // NAVIGATION: Must use router.replace to update RSC state and refresh sub-components
+            if (isNavigation) {
+                router.replace(newUrl);
+            }
+            // PURE UI: Use history.replaceState to avoid RSC log spam and increase snappiness
+            else {
+                window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+
+                // Manually sync local state since we bypassed the router re-render
+                if (updates.device) setDevice(updates.device);
+                if (updates.scale) {
+                    const s = parseFloat(updates.scale);
+                    if (!isNaN(s)) setDeviceScale(s);
+                }
+            }
         }
-    }, [searchParams, router, pathname]);
+    }, [router, pathname, setDeviceScale]);
 
     // Handle Device Change
     const changeDevice = useCallback((newDevice: string) => {
@@ -78,6 +103,7 @@ function WorkspaceContent() {
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'CANFEED_NAVIGATE' && event.data.url) {
+                // updateUrl will automatically treat this as a navigation (deep) update
                 updateUrl({ url: event.data.url });
             }
         };
@@ -99,7 +125,8 @@ function WorkspaceContent() {
                 );
 
                 if (matchingDevice && matchingDevice !== device) {
-                    changeDevice(matchingDevice);
+                    // Wrap in timeout to avoid sync setState during effect
+                    setTimeout(() => changeDevice(matchingDevice), 0);
                     return;
                 }
             }
