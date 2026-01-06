@@ -15,8 +15,8 @@ Follow these rules when writing tests for `canfeed-web`. Our goal is maximum con
 - **The Testing Trophy**:
     - **Static**: TypeScript for type safety.
     - **Unit**: Pure logic in `services.ts` and utility functions.
-    - **Integration**: Component interaction, Server Actions, and state management.
-    - **E2E**: Critical user journeys (Login, Workspace creation, Commenting).
+    - **Integration (The Sweet Spot)**: Test Component Interactions in Vitest. This is where 80% of UI testing happens. Fast, checking "Inputs -> Output".
+    - **E2E (The Critical Path)**: Test **User Journeys** only. Do NOT test individual component states here. Test flows: "User logs in -> does X -> sees Y".
 
 ## 2. Directory Structure
 
@@ -54,11 +54,16 @@ src/
 
 ## 4. Tooling & Commands
 
-- **Vitest**: For Unit and Integration tests.
-    - `npm run test`: Run all tests.
-    - `npm run test:watch`: Development mode.
-- **Playwright**: For E2E tests.
-    - `npx playwright test`: Run browser tests.
+### Vitest (Integration/Unit)
+- **Scope**: Components, Hooks, Utils, Actions.
+- **Rule**: If it's about "How this component behaves", test it here.
+- `npm run test`
+
+### Playwright (E2E)
+- **Scope**: Full Pages, Auth Flows, Database Mutations.
+- **Rule**: If it's about "Can a user complete this task?", test it here.
+- **Anti-Pattern**: Do NOT use Playwright to test if a button is red or if a modal opens (unless it's a critical journey step).
+- `npx playwright test`
 
 ## 5. Avoid These Pitfalls
 
