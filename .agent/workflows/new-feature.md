@@ -13,9 +13,11 @@ src/features/[feature-name]/
 ├── components/       # Feature-specific UI components
 ├── services.ts       # Server-only data fetching (Queries)
 ├── actions.ts        # Server Actions (Mutations & Client Bridges)
-├── types.ts          # Feature-specific TypeScript types
+├── types.ts          # Feature-specific types. STRICTLY AVOID 'any'.
 └── constants.ts      # (Optional) Feature constants
 ```
+
+**Type Safety**: strictly avoid using `any`. Define proper interfaces/types in `types.ts` or reuse existing ones.
 
 ### 2. Data Fetching (Services)
 - Always add `import 'server-only';` at the top of `services.ts`.
