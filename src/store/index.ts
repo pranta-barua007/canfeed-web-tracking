@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { type CommentType } from '@/features/comments/types';
 
-interface AppState {
+export interface AppState {
     isCommentMode: boolean;
     toggleCommentMode: () => void;
     setCommentMode: (mode: boolean) => void;
