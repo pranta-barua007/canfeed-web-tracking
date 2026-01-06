@@ -6,6 +6,10 @@ description: How to create a new feature following the project's modern architec
 
 Follow these steps when implementing a new feature in `canfeed-web`.
 
+### 0. Implementation Rules
+- **Research First**: Do not blindly implement solutions. If in doubt, **search the official documentation** or the web first.
+
+
 ### 1. Structure
 Create a new directory in `src/features/[feature-name]` with the following structure:
 ```text

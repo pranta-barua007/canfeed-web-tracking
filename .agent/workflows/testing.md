@@ -9,6 +9,7 @@ Follow these rules when writing tests for `canfeed-web`. Our goal is maximum con
 ## 1. Core Principles
 
 - **Test Logic, Not Libs**: Do not test external libraries (e.g., shadcn/ui, Radix, Lucide). Test **our usage** and the **behavior** of our components.
+- **Research First**: Do not blindly implement test patterns. If in doubt, **search the official documentation** (Vitest/Playwright) or the web first.
 - **No Any**: Strictly avoid using `any` in tests. Use proper types or explicit mocks (e.g., `vi.mocked`).
 - **Centralized Tests**: All tests reside in `src/__tests__`, mirroring the structure of the `src` directory. Do not introduce new folders within existing feature or app directories.
 - **The Testing Trophy**:
