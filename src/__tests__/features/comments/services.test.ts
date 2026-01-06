@@ -1,63 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getComments } from '../../../features/comments/services';
 import { db } from '@/db';
+import { mockQueryBuilder } from '../../mocks/db';
 
 // Mock server-only
 vi.mock('server-only', () => ({}));
 
-// 1. Define strict types for the query builder mock
-type QueryBuilderMock = {
-    select: ReturnType<typeof vi.fn>;
-    from: ReturnType<typeof vi.fn>;
-    leftJoin: ReturnType<typeof vi.fn>;
-    where: ReturnType<typeof vi.fn>;
-    orderBy: ReturnType<typeof vi.fn>;
-    limit: ReturnType<typeof vi.fn>;
-    offset: ReturnType<typeof vi.fn>;
-};
+// Mock server-only
+vi.mock('server-only', () => ({}));
 
-// 2. Use vi.hoisted to ensure the mock object is created before vi.mock calls
-const { mockQueryBuilder } = vi.hoisted(() => {
-    // Construct the mock chain methods
-    const select = vi.fn();
-    const from = vi.fn();
-    const leftJoin = vi.fn();
-    const where = vi.fn();
-    const orderBy = vi.fn();
-    const limit = vi.fn();
-    const offset = vi.fn();
-
-    const builder: QueryBuilderMock = {
-        select,
-        from,
-        leftJoin,
-        where,
-        orderBy,
-        limit,
-        offset,
+// Mock the db module
+vi.mock('@/db', async () => {
+    const { mockQueryBuilder } = await import('../../mocks/db');
+    return {
+        db: {
+            select: mockQueryBuilder.select,
+        },
     };
-
-    // Setup chain behavior
-    // Each method returns the builder object to allow chaining
-    select.mockReturnValue(builder);
-    from.mockReturnValue(builder);
-    leftJoin.mockReturnValue(builder);
-    where.mockReturnValue(builder);
-    orderBy.mockReturnValue(builder);
-    limit.mockReturnValue(builder);
-    // Offset is the end of the chain, so it returns a promise
-    offset.mockResolvedValue([]);
-
-
-    return { mockQueryBuilder: builder };
 });
-
-// Mock the db module using the hoisted variable
-vi.mock('@/db', () => ({
-    db: {
-        select: mockQueryBuilder.select,
-    },
-}));
 
 describe('getComments service', () => {
     beforeEach(() => {
