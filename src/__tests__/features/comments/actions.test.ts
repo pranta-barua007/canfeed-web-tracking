@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { type Comment } from '@/db/schema';
 
 vi.mock('server-only', () => ({}));
-vi.mock('@/db');
 vi.mock('next/cache');
 vi.mock('../../../features/comments/services');
 
