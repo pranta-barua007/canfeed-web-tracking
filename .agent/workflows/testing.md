@@ -8,6 +8,7 @@ Follow these rules when writing tests for `canfeed-web`. Our goal is maximum con
 
 ## 1. Core Principles
 
+- **Analyze Duty First**: Before writing a test, understand the *responsibility* of the file. Is it a wrapper? Test the I/O and delegation. Is it logic? Test the algorithm.
 - **Test Logic, Not Libs**: Do not test external libraries (e.g., shadcn/ui, Radix, Lucide). Test **our usage** and the **behavior** of our components.
 - **Research First**: Do not blindly implement test patterns. If in doubt, **search the official documentation** (Vitest/Playwright) or the web first.
 - **No Any**: Strictly avoid using `any` in tests. Use proper types or explicit mocks (e.g., `vi.mocked`).

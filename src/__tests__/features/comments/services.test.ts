@@ -48,3 +48,52 @@ describe('getComments service', () => {
         consoleSpy.mockRestore();
     });
 });
+
+describe('createComment service', () => {
+    const { mockInsert, mockValues, mockReturning, setupDbMock } = createDbQueryMock();
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setupDbMock();
+        vi.mocked(db.insert).mockReturnValue(mockInsert());
+    });
+
+    it('should create comment and return it', async () => {
+        const mockData = {
+            content: 'Test',
+            url: 'http://example.com',
+            x: 0,
+            y: 0
+        };
+        const mockResult = [{ id: '1', ...mockData }];
+
+        mockReturning.mockResolvedValue(mockResult);
+
+        const { createComment } = await import('../../../features/comments/services');
+        const result = await createComment(mockData);
+
+        expect(db.insert).toHaveBeenCalled();
+        expect(mockValues).toHaveBeenCalled();
+        expect(mockReturning).toHaveBeenCalled();
+        expect(result).toEqual(mockResult[0]);
+    });
+});
+
+describe('updateCommentResolution service', () => {
+    const { mockUpdate, mockSet, mockWhere, setupDbMock } = createDbQueryMock();
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setupDbMock();
+        vi.mocked(db.update).mockReturnValue(mockUpdate());
+    });
+
+    it('should update comment resolution', async () => {
+        const { updateCommentResolution } = await import('../../../features/comments/services');
+        await updateCommentResolution('123', true);
+
+        expect(db.update).toHaveBeenCalled();
+        expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ resolved: true }));
+        expect(mockWhere).toHaveBeenCalled();
+    });
+});

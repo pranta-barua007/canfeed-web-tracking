@@ -1,10 +1,7 @@
 "use server";
 
-import { db } from "@/db";
-import { comment, user } from "@/db/schema";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
-import { getComments as getCommentsService } from "./services";
+import { getComments as getCommentsService, createComment as createCommentService, updateCommentResolution } from "./services";
 
 import { type DeviceContext, type GetCommentsParams } from "./types";
 
@@ -20,31 +17,7 @@ export async function createComment(data: {
 }) {
     console.log("[Action] Creating comment for:", data.url, "Selector:", data.selector);
     try {
-        const authorId = data.authorId || "anon";
-
-        // Ensure 'anon' user exists to satisfy FK
-        if (authorId === "anon") {
-            await db.insert(user).values({
-                id: "anon",
-                name: "Anonymous",
-                email: "anon@example.com",
-                emailVerified: false,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            }).onConflictDoNothing().execute();
-        }
-
-        const [newComment] = await db.insert(comment).values({
-            content: data.content,
-            url: data.url,
-            x: data.x,
-            y: data.y,
-            selector: data.selector,
-            selectorFallback: data.selectorFallback,
-            authorId: authorId,
-            deviceContext: data.deviceContext
-        }).returning();
-
+        const newComment = await createCommentService(data);
         console.log("[Action] Comment created successfully:", newComment.id);
         revalidatePath("/workspace");
         return newComment;
@@ -56,10 +29,7 @@ export async function createComment(data: {
 
 export async function toggleResolveComment(commentId: string, resolved: boolean) {
     try {
-        await db.update(comment)
-            .set({ resolved, updatedAt: new Date() })
-            .where(eq(comment.id, commentId));
-
+        await updateCommentResolution(commentId, resolved);
         revalidatePath("/workspace");
         return { success: true };
     } catch (error) {

@@ -44,7 +44,7 @@ vi.mock('../../../../features/comments/components/FilterMenu', () => ({
     FilterMenu: () => <div data-testid="filter-menu" />,
 }));
 vi.mock('../../../../features/comments/components/CommentTabs', () => ({
-    CommentTabs: ({ showResolved, onTabChange }: { showResolved: boolean; onTabChange: (v: boolean) => void }) => (
+    CommentTabs: ({ onTabChange }: { showResolved: boolean; onTabChange: (v: boolean) => void }) => (
         <div data-testid="comment-tabs">
             <button onClick={() => onTabChange(false)}>Active</button>
             <button onClick={() => onTabChange(true)}>Resolved</button>

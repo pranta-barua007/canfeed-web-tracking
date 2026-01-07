@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { comment, user } from "@/db/schema";
 import { eq, desc, and, ilike, gt, sql, or } from "drizzle-orm";
 
-import { type GetCommentsParams } from "./types";
+import { type GetCommentsParams, type DeviceContext } from "./types";
 
 export async function getComments({
     url,
@@ -83,6 +83,51 @@ export async function getComments({
         return data;
     } catch (error) {
         console.error("Failed to fetch comment:", error);
+
         return [];
     }
+}
+
+export async function createComment(data: {
+    content: string;
+    url: string;
+    x: number;
+    y: number;
+    selector?: string;
+    selectorFallback?: Record<string, unknown> | null;
+    authorId?: string; // Optional if anon
+    deviceContext?: DeviceContext;
+}) {
+    const authorId = data.authorId || "anon";
+
+    // Ensure 'anon' user exists to satisfy FK
+    if (authorId === "anon") {
+        await db.insert(user).values({
+            id: "anon",
+            name: "Anonymous",
+            email: "anon@example.com",
+            emailVerified: false,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        }).onConflictDoNothing().execute();
+    }
+
+    const [newComment] = await db.insert(comment).values({
+        content: data.content,
+        url: data.url,
+        x: data.x,
+        y: data.y,
+        selector: data.selector,
+        selectorFallback: data.selectorFallback,
+        authorId: authorId,
+        deviceContext: data.deviceContext
+    }).returning();
+
+    return newComment;
+}
+
+export async function updateCommentResolution(commentId: string, resolved: boolean) {
+    await db.update(comment)
+        .set({ resolved, updatedAt: new Date() })
+        .where(eq(comment.id, commentId));
 }
