@@ -1,32 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getComments } from '../../../features/comments/services';
 import { db } from '@/db';
+import { createDbQueryMock } from '../../helpers/dbMock';
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/db');
 
 describe('getComments service', () => {
-    const mockSelect = vi.fn();
-    const mockFrom = vi.fn();
-    const mockLeftJoin = vi.fn();
-    const mockWhere = vi.fn();
-    const mockOrderBy = vi.fn();
-    const mockLimit = vi.fn();
-    const mockOffset = vi.fn();
+    const { mockSelect, mockFrom, mockLeftJoin, mockWhere, mockOrderBy, mockLimit, mockOffset, setupDbMock } = createDbQueryMock();
 
     beforeEach(() => {
         vi.clearAllMocks();
-
-        // Setup chainable query builder
-        mockSelect.mockReturnValue({ from: mockFrom });
-        mockFrom.mockReturnValue({ leftJoin: mockLeftJoin });
-        mockLeftJoin.mockReturnValue({ where: mockWhere });
-        mockWhere.mockReturnValue({ orderBy: mockOrderBy });
-        mockOrderBy.mockReturnValue({ limit: mockLimit });
-        mockLimit.mockReturnValue({ offset: mockOffset });
-        mockOffset.mockResolvedValue([]);
-
-        // Mock db.select to return our chain
+        setupDbMock();
         vi.mocked(db.select).mockReturnValue(mockSelect());
     });
 
