@@ -20,27 +20,26 @@ import { vi } from 'vitest';
  * ```
  */
 export function createDbQueryMock() {
+    // Select Chain Mocks
     const mockSelect = vi.fn();
     const mockFrom = vi.fn();
     const mockLeftJoin = vi.fn();
     const mockWhere = vi.fn();
+    const mockGroupBy = vi.fn();
     const mockOrderBy = vi.fn();
     const mockLimit = vi.fn();
     const mockOffset = vi.fn();
 
-    /**
-     * Sets up the chainable query builder with default return values.
-     * Call this in beforeEach to reset the chain.
-     */
+    // Insert Chain Mocks
     const mockInsert = vi.fn();
     const mockValues = vi.fn();
     const mockReturning = vi.fn();
     const mockOnConflictDoNothing = vi.fn();
     const mockExecute = vi.fn();
 
+    // Update Chain Mocks
     const mockUpdate = vi.fn();
     const mockSet = vi.fn();
-    // mockWhere is already defined and can be reused
 
     /**
      * Sets up the chainable query builder with default return values.
@@ -49,9 +48,14 @@ export function createDbQueryMock() {
     const setupDbMock = () => {
         // Select Chain
         mockSelect.mockReturnValue({ from: mockFrom });
-        mockFrom.mockReturnValue({ leftJoin: mockLeftJoin });
+        mockFrom.mockReturnValue({
+            leftJoin: mockLeftJoin,
+            groupBy: mockGroupBy,
+            orderBy: mockOrderBy,
+        });
         mockLeftJoin.mockReturnValue({ where: mockWhere });
         mockWhere.mockReturnValue({ orderBy: mockOrderBy });
+        mockGroupBy.mockReturnValue({ orderBy: mockOrderBy });
         mockOrderBy.mockReturnValue({ limit: mockLimit });
         mockLimit.mockReturnValue({ offset: mockOffset });
         mockOffset.mockResolvedValue([]);
@@ -69,14 +73,8 @@ export function createDbQueryMock() {
         // Update Chain
         mockUpdate.mockReturnValue({ set: mockSet });
         mockSet.mockReturnValue({ where: mockWhere });
-        // mockWhere already mocked above, but we need to ensure it handles promise return for update
-        // We'll treat mockWhere as returning a Promise by default for update calls if it's the end of chain
-        // But in select chain it returns an object. This is a potential conflict.
-        // Drizzle's where() in select returns a query builder.
-        // Drizzle's where() in update returns a Promise (or is thenable).
 
-        // Let's make mockWhere versatile.
-        // For strict typing we might need separate mocks, but for jest/vitest mocks we can return an object that is also thenable.
+        // Versatile Where for update chaining (thenable)
         const thenableWhere = {
             orderBy: mockOrderBy,
             then: (resolve: (value?: unknown) => void) => Promise.resolve().then(resolve)
@@ -89,6 +87,7 @@ export function createDbQueryMock() {
         mockFrom,
         mockLeftJoin,
         mockWhere,
+        mockGroupBy,
         mockOrderBy,
         mockLimit,
         mockOffset,
