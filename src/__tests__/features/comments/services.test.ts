@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getComments } from '../../../features/comments/services';
 import { db } from '@/db';
-import { createDbQueryMock } from '../../helpers/dbMock';
+import { createDbQueryMock } from '../../mocks/dbMock';
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/db');
