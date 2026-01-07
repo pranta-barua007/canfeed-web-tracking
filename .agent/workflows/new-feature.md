@@ -8,6 +8,12 @@ Follow these steps when implementing a new feature in `canfeed-web`.
 
 ### 0. Implementation Rules
 - **Research First**: Do not blindly implement solutions. If in doubt, **search the official documentation** or the web first.
+- **Package Selection**: When choosing external libraries or packages, evaluate:
+  - **Security**: Check for known vulnerabilities (use `npm audit` or Snyk)
+  - **Community**: Prefer widely-used, well-maintained packages with active communities
+  - **Maintenance**: Check last update date, issue response time, and release frequency
+  - **Bundle Size**: Consider impact on bundle size and performance (use bundlephobia.com)
+  - **Alternatives**: Always compare 2-3 alternatives before deciding
 
 
 ### 1. Structure

@@ -11,6 +11,11 @@ Follow these rules when writing tests for `canfeed-web`. Our goal is maximum con
 - **Test Logic, Not Libs**: Do not test external libraries (e.g., shadcn/ui, Radix, Lucide). Test **our usage** and the **behavior** of our components.
 - **Research First**: Do not blindly implement test patterns. If in doubt, **search the official documentation** (Vitest/Playwright) or the web first.
 - **No Any**: Strictly avoid using `any` in tests. Use proper types or explicit mocks (e.g., `vi.mocked`).
+- **Package Selection**: When adding testing libraries or tools, evaluate:
+  - **Security**: Check for known vulnerabilities
+  - **Community**: Prefer widely-used, well-maintained packages
+  - **Maintenance**: Check last update date and issue response time
+  - **Bundle Size**: Consider impact on test execution time and CI/CD performance
 - **Centralized Tests**: All tests reside in `src/__tests__`, mirroring the structure of the `src` directory. Do not introduce new folders within existing feature or app directories.
 - **The Testing Trophy**:
     - **Static**: TypeScript for type safety.
