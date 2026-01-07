@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import CommentsSidebar from '../../../features/comments/components/CommentsSidebar';
+import CommentsSidebar from '../../../../features/comments/components/CommentsSidebar';
 import { useAppStore, type AppState } from '@/store';
 import { useSearchParams, type ReadonlyURLSearchParams } from 'next/navigation';
-import * as actions from '../../../features/comments/actions';
+import * as actions from '../../../../features/comments/actions';
 
 // Mock server-only to allow importing server actions in client tests
 vi.mock('server-only', () => ({}));
@@ -34,16 +34,16 @@ vi.mock('react-intersection-observer', () => ({
     }),
 }));
 
-vi.mock('../../../features/comments/actions');
+vi.mock('../../../../features/comments/actions');
 
 // Mock child components that might be heavy or rely on more complex state
-vi.mock('../../../features/comments/components/SearchInput', () => ({
+vi.mock('../../../../features/comments/components/SearchInput', () => ({
     SearchInput: () => <div data-testid="search-input" />,
 }));
-vi.mock('../../../features/comments/components/FilterMenu', () => ({
+vi.mock('../../../../features/comments/components/FilterMenu', () => ({
     FilterMenu: () => <div data-testid="filter-menu" />,
 }));
-vi.mock('../../../features/comments/components/CommentTabs', () => ({
+vi.mock('../../../../features/comments/components/CommentTabs', () => ({
     CommentTabs: ({ showResolved, onTabChange }: { showResolved: boolean; onTabChange: (v: boolean) => void }) => (
         <div data-testid="comment-tabs">
             <button onClick={() => onTabChange(false)}>Active</button>
